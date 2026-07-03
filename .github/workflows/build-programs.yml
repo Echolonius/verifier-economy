@@ -41,17 +41,26 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq pkg-config libudev-dev
           npm install -g @coral-xyz/anchor-cli@0.32.1 || cargo install anchor-cli --version 0.32.1 --locked
 
-      # NOT `anchor build`: on a fresh checkout it generates target/deploy keypairs and key-syncs,
-      # rewriting every declare_id! — which would point the verifier's CPI at a nonexistent escrow.
-      # cargo build-sbf compiles exactly the declared ids; `anchor idl build` never touches keys.
+      # NOT a plain `anchor build`: on a fresh checkout it generates target/deploy keypairs and
+      # key-syncs, rewriting every declare_id! — which would point the verifier's CPI at a
+      # nonexistent escrow. So: binaries via cargo build-sbf (compiles exactly the declared ids),
+      # IDLs via `anchor build` in a throwaway copy (right shapes, wrong addresses), then the
+      # address fields are pinned back to the declared ids.
       - name: build programs (cargo build-sbf)
         run: cargo build-sbf
 
-      - name: build IDLs (anchor idl build)
+      - name: build IDLs (anchor build in a throwaway copy, addresses pinned back)
         run: |
+          rm -rf /tmp/idlbuild && cp -r . /tmp/idlbuild
+          (cd /tmp/idlbuild && anchor build)
           mkdir -p target/idl
+          declare -A ids=(
+            [escrow]="R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet"
+            [arbiter]="FJtuVXsyXuRKqgJBEPAXmktkd13CqStapgevzGwYktXd"
+            [verifier]="2ce3cMxqi423wQjC5NXNMBExa1PpybtCnLUs8uFtUvqn"
+          )
           for p in escrow arbiter verifier; do
-            anchor idl build --program-name "$p" > "target/idl/$p.json"
+            jq --arg addr "${ids[$p]}" '.address = $addr' "/tmp/idlbuild/target/idl/$p.json" > "target/idl/$p.json"
           done
 
       - name: Upload program + IDL artifacts
