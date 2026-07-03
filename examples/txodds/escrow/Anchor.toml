@@ -8,6 +8,7 @@ skip-lint = false
 [programs.devnet]
 escrow = "R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet"
 arbiter = "FJtuVXsyXuRKqgJBEPAXmktkd13CqStapgevzGwYktXd"
+verifier = "2ce3cMxqi423wQjC5NXNMBExa1PpybtCnLUs8uFtUvqn"
 
 [registry]
 url = "https://api.apr.dev"

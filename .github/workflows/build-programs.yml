@@ -1,0 +1,52 @@
+name: build-programs
+
+# Builds the Anchor workspace (escrow + arbiter + verifier) and publishes the compiled
+# .so + IDL as artifacts, so the devnet deploy is reproducible from CI output.
+on:
+  push:
+    branches: [verifier-economy, main]
+    paths:
+      - "examples/txodds/escrow/**"
+      - ".github/workflows/build-programs.yml"
+  workflow_dispatch:
+
+jobs:
+  anchor-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/txodds/escrow
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana (Agave)
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            examples/txodds/escrow/target
+          key: anchor-${{ runner.os }}-${{ hashFiles('examples/txodds/escrow/Cargo.toml', 'examples/txodds/escrow/programs/**/Cargo.toml') }}
+
+      - name: Install Anchor CLI 0.32.1
+        run: npm install -g @coral-xyz/anchor-cli@0.32.1 || cargo install anchor-cli --version 0.32.1 --locked
+
+      - name: anchor build
+        run: anchor build
+
+      - name: Upload program + IDL artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: programs
+          path: |
+            examples/txodds/escrow/target/deploy/*.so
+            examples/txodds/escrow/target/idl/*.json
+          if-no-files-found: error
