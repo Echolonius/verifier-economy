@@ -37,7 +37,9 @@ jobs:
           key: anchor-${{ runner.os }}-${{ hashFiles('examples/txodds/escrow/Cargo.toml', 'examples/txodds/escrow/programs/**/Cargo.toml') }}
 
       - name: Install Anchor CLI 0.32.1
-        run: npm install -g @coral-xyz/anchor-cli@0.32.1 || cargo install anchor-cli --version 0.32.1 --locked
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq pkg-config libudev-dev
+          npm install -g @coral-xyz/anchor-cli@0.32.1 || cargo install anchor-cli --version 0.32.1 --locked
 
       - name: anchor build
         run: anchor build
