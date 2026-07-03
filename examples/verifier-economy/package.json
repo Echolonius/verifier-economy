@@ -1,0 +1,26 @@
+{
+  "name": "@pay/example-verifier-economy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "description": "The Verifier Economy — agents sell work, a paid neutral verifier agent rules on every delivery, and the escrow pays out (or refunds) on its verdict",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "demo": "tsx src/run.ts",
+    "web": "npx --yes serve web -l 3021"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@pay/agent-runtime": "file:../../packages/agent-runtime",
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^1.6.0"
+  }
+}

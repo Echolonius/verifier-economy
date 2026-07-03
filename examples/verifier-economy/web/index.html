@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Verifier Economy — devnet</title>
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #121821; --edge: #1f2937; --ink: #e5ecf3; --dim: #8b98a9;
+    --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #60a5fa; --violet: #a78bfa;
+    font-size: 15px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 1rem/1.45 ui-sans-serif, system-ui, "Segoe UI", sans-serif; padding: 1.2rem 1.4rem 3rem; }
+  h1 { font-size: 1.25rem; letter-spacing: .01em; }
+  h1 .live { color: var(--green); font-size: .8rem; vertical-align: middle; margin-left: .6rem; }
+  .sub { color: var(--dim); margin: .2rem 0 1.1rem; font-size: .92rem; }
+  .wallets { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .7rem; margin-bottom: 1.1rem; }
+  .wallet { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: .7rem .85rem; }
+  .wallet .role { color: var(--dim); font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
+  .wallet .name { font-weight: 600; margin: .1rem 0 .3rem; }
+  .wallet .bal { font: 600 1.15rem/1.2 ui-monospace, monospace; }
+  .wallet .delta { font: .8rem ui-monospace, monospace; margin-left: .4rem; }
+  .up { color: var(--green); } .down { color: var(--red); }
+  .cols { display: grid; grid-template-columns: minmax(340px, 1.2fr) minmax(300px, 1fr); gap: 1rem; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .rounds { display: flex; flex-direction: column; gap: .8rem; }
+  .round { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: .85rem 1rem; }
+  .round h2 { font-size: .95rem; display: flex; align-items: center; gap: .6rem; }
+  .badge { font: 600 .72rem/1 ui-monospace, monospace; padding: .28em .6em; border-radius: 999px; letter-spacing: .04em; }
+  .badge.verified { background: #093; background: rgba(52,211,153,.15); color: var(--green); border: 1px solid rgba(52,211,153,.4); }
+  .badge.rejected { background: rgba(248,113,113,.13); color: var(--red); border: 1px solid rgba(248,113,113,.4); }
+  .badge.open { background: rgba(251,191,36,.12); color: var(--amber); border: 1px solid rgba(251,191,36,.35); }
+  .step { display: flex; gap: .6rem; margin: .45rem 0 0; font-size: .88rem; }
+  .step .tag { flex: 0 0 5.4rem; color: var(--dim); font: .74rem/1.7 ui-monospace, monospace; text-transform: uppercase; }
+  .step a { color: var(--blue); text-decoration: none; }
+  .step a:hover { text-decoration: underline; }
+  .bid { font-family: ui-monospace, monospace; font-size: .84rem; }
+  .bid .price { color: var(--amber); }
+  .reason { color: var(--red); font-size: .82rem; }
+  .feed { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: .7rem .8rem; max-height: 72vh; overflow: auto; }
+  .feed h2 { font-size: .85rem; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem; }
+  .msg { font: .78rem/1.5 ui-monospace, monospace; padding: .18rem 0; border-bottom: 1px solid rgba(31,41,55,.5); word-break: break-all; }
+  .msg .from { color: var(--violet); }
+  .msg .verb { color: var(--blue); font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1>The Verifier Economy <span class="live" id="live">● connecting…</span></h1>
+  <p class="sub">Agents sell work · a <b>paid neutral verifier</b> rules on every delivery · the escrow settles on its verdict — live on Solana devnet.</p>
+
+  <div class="wallets" id="wallets"></div>
+  <div class="cols">
+    <div class="rounds" id="rounds"></div>
+    <div class="feed"><h2>market thread</h2><div id="feed"></div></div>
+  </div>
+
+<script>
+  const FEED = location.hostname ? `http://${location.hostname}:3031/events` : 'http://localhost:3031/events'
+  const el = (id) => document.getElementById(id)
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+  const tok = (t, k) => (t.match(new RegExp(k + '=(\\S+)')) || [])[1]
+  const unb64 = (s) => { try { return atob(s.replace(/-/g, '+').replace(/_/g, '/')) } catch { return s } }
+  const expl = (kind, id) => `https://explorer.solana.com/${kind}/${id}?cluster=devnet`
+
+  const ROLES = { payer: 'buyer agent', 'atlas-extracts': 'seller · honest', 'quickparse-99': 'seller · slop', veritas: 'verifier (paid)' }
+  const first = {}, last = {}
+  function renderWallets(text) {
+    for (const part of text.split(' ').slice(1)) {
+      const [name, bal] = part.split('=')
+      if (!(name in first)) first[name] = +bal
+      last[name] = +bal
+    }
+    el('wallets').innerHTML = Object.entries(last).map(([name, bal]) => {
+      const d = bal - first[name]
+      const delta = Math.abs(d) < 1e-9 ? '' : `<span class="delta ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d.toFixed(6)}</span>`
+      return `<div class="wallet"><div class="role">${esc(ROLES[name] || name)}</div><div class="name">${esc(name)}</div><div class="bal">${bal.toFixed(6)} <span style="color:var(--dim);font-size:.8rem">SOL</span>${delta}</div></div>`
+    }).join('')
+  }
+
+  const rounds = {}
+  function round(n) {
+    if (!rounds[n]) {
+      rounds[n] = { n, bids: [], steps: [], status: 'open', label: '' }
+      const div = document.createElement('div')
+      div.className = 'round'; div.id = 'round-' + n
+      el('rounds').prepend(div)
+    }
+    return rounds[n]
+  }
+  function renderRound(r) {
+    const badge = r.status === 'open' ? '<span class="badge open">IN PROGRESS</span>'
+      : r.status === 'VERIFIED' ? '<span class="badge verified">VERIFIED → RELEASED</span>'
+      : '<span class="badge rejected">REJECTED → REFUNDED</span>'
+    document.getElementById('round-' + r.n).innerHTML =
+      `<h2>Round ${r.n} ${badge}</h2>` +
+      (r.label ? `<div class="step"><div class="tag">setup</div><div>${esc(r.label)}</div></div>` : '') +
+      r.steps.map((s) => `<div class="step"><div class="tag">${s.tag}</div><div>${s.html}</div></div>`).join('')
+  }
+
+  function handle(ev) {
+    const { from, text } = ev
+    const verb = text.split(/\s+/)[0]
+    if (verb === 'BALANCES') return renderWallets(text)
+
+    const n = +(tok(text, 'round') || (text.match(/^ROUND (\d+)/) || [])[1])
+    if (text.startsWith('ROUND ')) { round(n).label = text.replace(/^ROUND \d+ — /, ''); return renderRound(round(n)) }
+    if (!Number.isFinite(n)) return
+    const r = round(n)
+
+    if (verb === 'WANT') r.steps.push({ tag: 'want', html: `<b>${esc(tok(text, 'service'))}</b> on <b>${esc(tok(text, 'arg'))}</b>, budget ${esc(tok(text, 'budget'))} SOL — spec attached` })
+    else if (verb === 'BID') r.steps.push({ tag: 'bid', html: `<span class="bid">${esc(tok(text, 'by'))} → <span class="price">${esc(tok(text, 'price'))} SOL</span></span>` })
+    else if (verb === 'AWARD') r.steps.push({ tag: 'award', html: `<b>${esc(tok(text, 'to'))}</b> wins ${text.includes('reason=') ? '— ' + esc((text.match(/reason="([^"]*)"/) || [, ''])[1]) : ''}` })
+    else if (verb === 'DEPOSITED') r.steps.push({ tag: 'escrow', html: `deposit + verifier fee locked, verifier named — <a target="_blank" href="${expl('tx', tok(text, 'sig'))}">open tx</a> · <a target="_blank" href="${expl('address', tok(text, 'vault'))}">vault</a>` })
+    else if (verb === 'DELIVER') r.steps.push({ tag: 'deliver', html: `${esc(tok(text, 'by'))} delivered <code>${esc(unb64(tok(text, 'payload')).slice(0, 80))}…</code>` })
+    else if (verb === 'VERDICT') {
+      const result = tok(text, 'result'), sig = tok(text, 'sig'), reason = tok(text, 'reason')
+      if (sig) { r.status = result; r.steps.push({ tag: 'settled', html: `${result === 'VERIFIED' ? 'seller paid, verifier fee’d' : 'payer refunded, verifier fee’d'} — <a target="_blank" href="${expl('tx', sig)}">settlement tx</a>` }) }
+      else r.steps.push({ tag: 'verdict', html: `${result}${reason ? ` <span class="reason">${esc(unb64(reason))}</span>` : ''}` })
+    }
+    renderRound(r)
+  }
+
+  const feed = el('feed')
+  const src = new EventSource(FEED)
+  src.onopen = () => { el('live').textContent = '● live' }
+  src.onerror = () => { el('live').textContent = '● waiting for demo (npm run demo)' }
+  src.onmessage = (m) => {
+    const ev = JSON.parse(m.data)
+    const div = document.createElement('div')
+    div.className = 'msg'
+    div.innerHTML = `<span class="from">${esc(ev.from)}</span> <span class="verb">${esc(ev.text.split(' ')[0])}</span> ${esc(ev.text.slice(ev.text.indexOf(' ') + 1, 220))}`
+    feed.appendChild(div); feed.scrollTop = feed.scrollHeight
+    try { handle(ev) } catch (e) { console.error(e) }
+  }
+</script>
+</body>
+</html>
