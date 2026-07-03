@@ -22,9 +22,11 @@ const { AnchorProvider, BN } = anchor
 export const ESCROW_PROGRAM_ID = new PublicKey('R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet')
 export const VERIFIER_PROGRAM_ID = new PublicKey('2ce3cMxqi423wQjC5NXNMBExa1PpybtCnLUs8uFtUvqn')
 
-const VERIFIER_IDL = JSON.parse(
-  readFileSync(fileURLToPath(new URL('./verifier_idl.json', import.meta.url)), 'utf8'),
-)
+// Pin the address regardless of what the IDL artifact carries — the deployed id is the contract.
+const VERIFIER_IDL = {
+  ...JSON.parse(readFileSync(fileURLToPath(new URL('./verifier_idl.json', import.meta.url)), 'utf8')),
+  address: '2ce3cMxqi423wQjC5NXNMBExa1PpybtCnLUs8uFtUvqn',
+}
 
 export const vaultPda = (reference: PublicKey): PublicKey =>
   PublicKey.findProgramAddressSync([Buffer.from('vault'), reference.toBuffer()], VERIFIER_PROGRAM_ID)[0]

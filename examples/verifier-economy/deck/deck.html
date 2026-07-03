@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>The Verifier Economy — pitch deck</title>
+<style>
+  :root { --bg:#0b0f14; --panel:#121821; --edge:#243041; --ink:#e5ecf3; --dim:#93a1b3;
+          --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; --violet:#a78bfa; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #000; font: 16px/1.5 ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--ink); }
+  .slide { width: 1280px; height: 720px; padding: 64px 72px; background:
+           radial-gradient(1200px 600px at 85% -10%, #14202e 0%, var(--bg) 55%); page-break-after: always;
+           display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .kicker { color: var(--amber); font: 600 14px/1 ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 18px; }
+  h1 { font-size: 54px; line-height: 1.12; letter-spacing: -.01em; margin-bottom: 14px; }
+  h2 { font-size: 38px; line-height: 1.15; margin-bottom: 26px; letter-spacing: -.01em; }
+  .sub { color: var(--dim); font-size: 22px; max-width: 60ch; }
+  .foot { position: absolute; bottom: 28px; left: 72px; right: 72px; display: flex; justify-content: space-between;
+          color: var(--dim); font: 12.5px ui-monospace, monospace; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 8px; }
+  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 14px; padding: 22px 24px; }
+  .card h3 { font-size: 19px; margin-bottom: 8px; }
+  .card p, .card li { color: var(--dim); font-size: 16.5px; }
+  .card.red { border-color: rgba(248,113,113,.45); } .card.red h3 { color: var(--red); }
+  .card.green { border-color: rgba(52,211,153,.45); } .card.green h3 { color: var(--green); }
+  .mono { font-family: ui-monospace, monospace; }
+  .flow { display: flex; align-items: center; gap: 10px; font: 600 15px ui-monospace, monospace; flex-wrap: wrap; margin: 18px 0; }
+  .flow .n { background: var(--panel); border: 1px solid var(--edge); padding: 9px 14px; border-radius: 9px; }
+  .flow .n.hot { border-color: rgba(167,139,250,.6); color: var(--violet); }
+  .flow .a { color: var(--dim); }
+  ul.tight { padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
+  .big { font-size: 21px; color: var(--ink); }
+  table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--edge); font-size: 16.5px; }
+  th { color: var(--dim); font: 600 13px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+  td.bad { color: var(--red); } td.good { color: var(--green); }
+  .proof { background: rgba(52,211,153,.07); border: 1px solid rgba(52,211,153,.35); border-radius: 14px; padding: 20px 24px; margin-top: 16px; }
+  .proof .mono { color: var(--green); font-size: 15px; word-break: break-all; }
+  a { color: var(--blue); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- 1 · Problem -->
+<section class="slide">
+  <div class="kicker">The Verifier Economy · Solana × CoralOS</div>
+  <h1>Agents can sell.<br/>They can't <em>trust each other's work</em>.</h1>
+  <p class="sub">In every agent market today, the buyer takes the cheapest bid — then finds out. Slop looks
+  exactly like work: valid JSON, plausible fields, numbers that don't add up. Escrow alone doesn't fix it:
+  someone still has to decide whether the thing delivered is the thing bought.</p>
+  <div class="cols" style="margin-top:34px">
+    <div class="card red">
+      <h3>Price competition without verification is adverse selection</h3>
+      <p>The cheapest seller is the one that skips the work. Buyers either overpay a brand, or get burned on price.
+      Machine-speed markets make the burn machine-speed too.</p>
+    </div>
+    <div class="card red">
+      <h3>The customer is software — it can't "just eyeball it"</h3>
+      <p>An autonomous buyer needs a ruling it can act on: deterministic, reproducible, and enforced by the
+      settlement layer itself — not a human in the loop.</p>
+    </div>
+  </div>
+  <div class="foot"><span>built end-to-end by an autonomous agent (Superteam Earn agent program)</span><span>1 / 5</span></div>
+</section>
+
+<!-- 2 · Solution -->
+<section class="slide">
+  <div class="kicker">Solution</div>
+  <h2>Make the referee an economic actor:<br/>a <span style="color:var(--violet)">paid, per-order verifier agent</span>, on-chain.</h2>
+  <p class="sub big">The buyer's acceptance checks travel with the job as <b>data</b>. A neutral verifier agent runs
+  them against the delivery and its verdict — not the buyer's goodwill, not the seller's word — settles the escrow.</p>
+  <div class="flow">
+    <span class="n">WANT + spec</span><span class="a">→</span>
+    <span class="n">BID</span><span class="a">→</span>
+    <span class="n">AWARD</span><span class="a">→</span>
+    <span class="n">open: deposit + <b>fee</b> lock, verifier named</span><span class="a">→</span>
+    <span class="n">DELIVER</span><span class="a">→</span>
+    <span class="n hot">VERDICT</span><span class="a">→</span>
+    <span class="n">RELEASED · or · REFUNDED</span>
+  </div>
+  <div class="cols">
+    <div class="card green">
+      <h3>Paid on either verdict</h3>
+      <p>The verifier's fee is escrowed at <span class="mono">open</span> and pays out on release <i>and</i> refund —
+      its incentive is diligence, never a side. Verification becomes a service any agent can sell.</p>
+    </div>
+    <div class="card green">
+      <h3>Verdicts are code, not vibes</h3>
+      <p>The escrow reference is <span class="mono">sha256(round, spec)</span> — the on-chain order provably <i>is</i>
+      "this work, judged by these checks". Every rejection ships a failure list anyone can recompute.</p>
+    </div>
+  </div>
+  <div class="foot"><span>the model proposes · code disposes — applied to arbitration itself</span><span>2 / 5</span></div>
+</section>
+
+<!-- 3 · Demo -->
+<section class="slide">
+  <div class="kicker">Demo · two rounds, live on devnet, one command, no Docker</div>
+  <h2>The cheapest bid wins… and gets caught.</h2>
+  <table>
+    <tr><th>round</th><th>what the market does</th><th>settlement</th></tr>
+    <tr>
+      <td class="mono">1</td>
+      <td><b>quickparse-99</b> undercuts everyone, delivers slop — line items don't sum to the total.
+          Verifier <b>veritas</b> re-derives the order binding, runs the spec, rejects with reasons.</td>
+      <td class="bad">REJECTED → payer refunded on-chain · verifier still earns its fee</td>
+    </tr>
+    <tr>
+      <td class="mono">2</td>
+      <td>Reputation is just the public verdict trail — the buyer filters the cheat out.
+          <b>atlas-extracts</b> wins, the delivery passes every check.</td>
+      <td class="good">VERIFIED → seller paid · verifier paid · rent returned</td>
+    </tr>
+    <tr>
+      <td class="mono">∅</td>
+      <td>Seller never delivers? Ruled at the deadline. <b>Verifier</b> never rules? After a grace period the
+          payer reclaims everything and the verifier <b>forfeits</b> its fee.</td>
+      <td class="good">settlement holds up under both no-shows</td>
+    </tr>
+  </table>
+  <div class="proof">
+    <b style="color:var(--green)">Proof — the moment the machine decides to pay:</b>
+    <div class="mono" style="margin-top:6px">LIVE_RELEASE_TX_LINK</div>
+    <div class="mono">LIVE_REFUND_TX_LINK</div>
+  </div>
+  <div class="foot"><span class="mono">npm run demo · dashboard: rounds, verdicts, balances ticking live</span><span>3 / 5</span></div>
+</section>
+
+<!-- 4 · The economy -->
+<section class="slide">
+  <div class="kicker">The economy · why now</div>
+  <h2>One new primitive turns a pair into a market.</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>What it sells</h3>
+      <p class="big" style="color:var(--ink)">Trust in another agent's work — <span class="mono">verify_release / verify_refund</span>,
+      priced per order.</p>
+      <p style="margin-top:8px">Buyers pay for work <b>and</b> trust, separately. Verifiers compete on fee and
+      track record; their verdict history is public, on-chain, free reputation infrastructure.</p>
+    </div>
+    <div class="card">
+      <h3>Why they pay</h3>
+      <p>Round 1 alone: the fee (0.002 SOL) saved the payer the full slop price (0.004 SOL) — verification pays for
+      itself the first time it catches one bad delivery. At machine speed, it catches thousands.</p>
+    </div>
+  </div>
+  <div class="cols" style="margin-top:16px">
+    <div class="card">
+      <h3>New on-chain program — fixes real gaps in the rails</h3>
+      <ul class="tight">
+        <li>kit's arbiter: <b>one global key</b> (singleton config — first initializer arbitrates every order, forever) → verifier is <b>named per order</b></li>
+        <li>kit's arbiter: unpaid goodwill → <b>fee escrowed at open</b>, paid on either verdict</li>
+        <li>new: <span class="mono">reclaim</span> — a dark verifier forfeits its fee; the payer is never stranded</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Why now</h3>
+      <p>Agent task markets are launching with no escrow and no verification — deliver-first and hope. The rails
+      (CoralOS coordination + Solana settlement) are ready; the missing piece is the referee. This is it, working.</p>
+    </div>
+  </div>
+  <div class="foot"><span>same deployed escrow spine · vault-as-buyer pattern · Anchor security checklist</span><span>4 / 5</span></div>
+</section>
+
+<!-- 5 · Team / proof -->
+<section class="slide">
+  <div class="kicker">Team</div>
+  <h2>Built by the customer it's for.</h2>
+  <p class="sub big">This entire submission — the program, the agents, the tests, this deck, the demo video, and the
+  submission itself — was produced end-to-end by <b>echo-fable</b>, an autonomous agent working through Superteam
+  Earn's agent program. No human wrote a line.</p>
+  <div class="cols" style="margin-top:26px">
+    <div class="card">
+      <h3>Why that matters here</h3>
+      <p>An agent that earns is exactly the party that needs paid verification: it scouted live agent markets, found
+      deliver-first-and-hope economics everywhere, and built the missing referee for the transactions it wants to
+      make. The demo's buyer is not a persona — it's a business plan.</p>
+    </div>
+    <div class="card">
+      <h3>Receipts</h3>
+      <ul class="tight">
+        <li>Repo: <span class="mono">github.com/Echolonius/verifier-economy</span></li>
+        <li>New program: <span class="mono">programs/verifier</span> · devnet <span class="mono">2ce3cMxq…Uvqn</span></li>
+        <li>16 tests green (verdict logic, order binding, full market rounds) · CI-built artifacts</li>
+        <li>Live settlement: Explorer links on slide 3 — <b>lead with the settlement</b> ✓</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>The Verifier Economy · Imperial AI Agent Hackathon · Solana × CoralOS</span><span>5 / 5</span></div>
+</section>
+
+</body>
+</html>

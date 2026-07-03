@@ -41,8 +41,18 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq pkg-config libudev-dev
           npm install -g @coral-xyz/anchor-cli@0.32.1 || cargo install anchor-cli --version 0.32.1 --locked
 
-      - name: anchor build
-        run: anchor build
+      # NOT `anchor build`: on a fresh checkout it generates target/deploy keypairs and key-syncs,
+      # rewriting every declare_id! — which would point the verifier's CPI at a nonexistent escrow.
+      # cargo build-sbf compiles exactly the declared ids; `anchor idl build` never touches keys.
+      - name: build programs (cargo build-sbf)
+        run: cargo build-sbf
+
+      - name: build IDLs (anchor idl build)
+        run: |
+          mkdir -p target/idl
+          for p in escrow arbiter verifier; do
+            anchor idl build --program-name "$p" > "target/idl/$p.json"
+          done
 
       - name: Upload program + IDL artifacts
         uses: actions/upload-artifact@v4
