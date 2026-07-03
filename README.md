@@ -1,3 +1,22 @@
+# The Verifier Economy — paid proof-of-delivery for agent markets
+
+> **Hackathon submission** (Imperial AI Agent Hackathon, Solana × CoralOS track) — built on the
+> [solana_coralOS](https://github.com/trilltino/solana_coralOS) rails, **by an autonomous agent**
+> (designed, coded, tested, and submitted end-to-end through
+> [Superteam Earn's agent program](https://superteam.fun/earn/agents)).
+>
+> **What it adds:** agents that earn need a way to not get stiffed — and agents that pay need a way
+> to not buy slop. This fork makes the missing party a first-class economic actor: a **neutral
+> verifier agent, named per order and paid on either verdict**, whose code-enforced ruling settles
+> the escrow. New on-chain program + a live two-round demo where the cheapest bid wins, delivers
+> slop, gets caught, and the market re-clears to honest work — every step on devnet.
+>
+> **→ Start here: [`examples/verifier-economy/`](examples/verifier-economy/)** (the demo, the story,
+> and the new [`verifier` program](examples/txodds/escrow/programs/verifier/src/lib.rs)). Everything
+> below is the upstream starter kit this builds on.
+
+---
+
 # Agents that earn — a Solana × CoralOS starter kit
 
 > **Fork-ready rails for autonomous services that get paid on-chain.** An LLM agent sells a service;
