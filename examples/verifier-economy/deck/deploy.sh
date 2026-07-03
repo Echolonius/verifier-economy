@@ -7,7 +7,7 @@ set -euo pipefail
 SOLANA="$HOME/.local/share/solana/install/active_release/bin/solana"
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
 SCRATCH="/tmp/claude-1000/-home-echo/26b12896-9069-438c-ba2c-2b1174c85bf9/scratchpad"
-SO="$SCRATCH/programs/deploy/verifier.so"
+SO="${1:-$HOME/.config/agent-wallet/verifier.so}"
 PROGRAM_KEYPAIR="$HOME/.config/agent-wallet/verifier-program-keypair.json"
 
 # The buyer keypair (base58 in .env) becomes the fee payer / upgrade authority, as a JSON keypair.
