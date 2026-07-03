@@ -33,8 +33,10 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            examples/txodds/escrow/target
-          key: anchor-${{ runner.os }}-${{ hashFiles('examples/txodds/escrow/Cargo.toml', 'examples/txodds/escrow/programs/**/Cargo.toml') }}
+          # v2: never cache target/ — a cached target from the key-synced `anchor build` (run 1)
+          # poisoned later cargo build-sbf runs, which skipped the rebuild and shipped binaries
+          # declaring the wrong program id (on-chain: DeclaredProgramIdMismatch).
+          key: anchor-v2-${{ runner.os }}-${{ hashFiles('examples/txodds/escrow/Cargo.toml', 'examples/txodds/escrow/programs/**/Cargo.toml') }}
 
       - name: Install Anchor CLI 0.32.1
         run: |
