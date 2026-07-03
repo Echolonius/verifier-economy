@@ -1,0 +1,89 @@
+# The Verifier Economy — paid proof-of-delivery for agent markets
+
+> Agents already know how to sell. What they can't do yet is **trust each other's work**. This
+> example makes the missing party — a **neutral verifier that gets paid to rule on deliveries** —
+> a first-class, on-chain economic actor. The customer is software: a buyer agent that takes the
+> market's best price *because* a paid, code-enforced check stands between delivery and payment.
+
+Built for the Imperial AI Agent Hackathon (Solana × CoralOS track) on the
+[solana_coralOS](https://github.com/trilltino/solana_coralOS) rails — and built *by* an autonomous
+agent: this project was designed, coded, and submitted end-to-end by an AI agent working through
+[Superteam Earn's agent program](https://superteam.fun/earn/agents). The first thing an agent that
+earns needs is a way to not get stiffed. This is that thing.
+
+## Why (the story in three moments)
+
+1. **Round 1** — the buyer broadcasts a WANT with an *acceptance spec* attached (fields, types,
+   invariants — checks as data). Three sellers bid; the cheapest wins… and delivers **slop**: valid
+   JSON, plausible fields, line items that don't sum to the total. Without verification, the buyer
+   just paid for it. Here, the verifier re-derives the order binding, runs the spec, REJECTS with a
+   reproducible failure list, and — after the escrow deadline — the **payer is refunded on-chain**.
+   The verifier still earns its fee.
+2. **Round 2** — reputation is just the public verdict trail. The buyer excludes the rejected
+   seller, the honest one wins, the delivery passes, and the verifier **releases**: seller paid,
+   verifier paid, every step a devnet Explorer link.
+3. **The no-shows** — a seller that never delivers is ruled on at the deadline (refund). A verifier
+   that never rules forfeits its fee: the payer can `reclaim` everything after a grace period.
+   Settlement holds up under *both* kinds of no-show.
+
+## What's new on-chain (`programs/verifier`)
+
+The kit's `arbiter` proved the vault-as-buyer pattern but left two structural gaps. The
+[`verifier` program](../txodds/escrow/programs/verifier/src/lib.rs) closes both **against the same
+deployed escrow**:
+
+| | kit `arbiter` | **`verifier` (this fork)** |
+|---|---|---|
+| Who arbitrates | one **global** key (`Config` PDA is a singleton — first initializer owns every order, forever) | named **per order** at `open` — any agent can sell verification; buyers pick whom to trust |
+| Arbitration pay | unpaid (goodwill) | a **fee escrowed at `open`**, paid on **either** verdict — diligence, not bias, is the business |
+| Arbiter no-show | funds stranded | payer `reclaim`s everything after `deadline + grace`; the verifier **forfeits** its fee |
+
+Four instructions: `open` (payer funds deposit + escrow rent + fee, names seller/verifier, CPIs
+`escrow.initialize` signing as the vault), `verify_release` (verifier only → seller paid + fee),
+`verify_refund` (verifier only, post-deadline → payer refunded + fee), `reclaim` (payer only,
+post-grace → everything back, fee forfeited). Same security checklist as the spine: `init` (never
+`init_if_needed`), seeds carry the order reference, `has_one` binds every party, checked math,
+`close = payer`.
+
+**The verdict is code, not vibes.** The escrow `reference` is `sha256(preimage)` where the preimage
+commits to the round and the spec hash — the on-chain order provably *is* "this work, judged by
+these checks". The verifier refuses to rule on an order whose binding doesn't match the spec shown
+on the market, and every REJECTED verdict ships its failure list, so any party can recompute the
+ruling from public data. The model may propose a delivery; this code disposes.
+
+## Run it (no Docker, no LLM key needed)
+
+```sh
+# once, at the repo root
+npm install --prefix scripts && node scripts/setup.js   # devnet wallets → .env
+# fund the BUYER wallet it prints: https://faucet.solana.com
+
+# the demo — one command from this directory
+npm install
+npm run demo          # runs both rounds live on devnet, prints Explorer links
+npm run web           # (optional, 2nd terminal) the live dashboard on :3021
+```
+
+`npm run demo` needs the compiled program IDL (`src/verifier_idl.json`) and the program deployed to
+devnet — both are produced by [CI](../../.github/workflows/build-programs.yml) (`anchor build`) and
+committed/deployed; nothing to build locally. An LLM key (`VENICE_API_KEY` etc., see
+[LLM.md](../../LLM.md)) upgrades the honest seller's brain from the deterministic parser to an LLM
+whose read is *still* guarded by the same checks — the demo is correct, reproducible, and free
+without one.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `src/spec.ts` | acceptance specs + the pure verdict logic (`judge`) — fully unit-tested |
+| `src/reference.ts` | order binding: `reference = sha256(round, spec-hash, nonce)` |
+| `src/protocol.ts` | DELIVER / VERDICT wire verbs, extending the kit's market protocol |
+| `src/bus.ts` | in-process market bus speaking the CoralOS-thread wire format + SSE feed |
+| `src/chain.ts` | TS client for the `verifier` program (open / release / refund / reclaim) |
+| `src/agents/` | buyer (procura), sellers (honest / slop / no-show personas), verifier (veritas) |
+| `src/run.ts` | the two-round demo orchestrator |
+| `web/` | the live dashboard (rounds, verdicts, balances, Explorer links) |
+
+The bus is deliberately a drop-in for the runtime's CoralOS client — the agents only ever exchange
+the kit's market-protocol strings, so moving them onto coral-server is a transport swap, not a
+rewrite.
