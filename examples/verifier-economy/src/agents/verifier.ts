@@ -12,9 +12,9 @@
 import type { Keypair } from '@solana/web3.js'
 import { PublicKey } from '@solana/web3.js'
 import type { MarketBus } from '../bus.js'
-import { parseWant, parseDeposited, type Want } from '@pay/agent-runtime'
+import { parseWant, parseDeposited } from '@pay/agent-runtime'
 import { parseDeliver, formatVerdict } from '../protocol.js'
-import { judge, b64, unb64, type AcceptanceSpec } from '../spec.js'
+import { judge, b64, unb64, specHash, type AcceptanceSpec } from '../spec.js'
 import { referenceOf, preimageMatches } from '../reference.js'
 import { makeVerifierProgram, verifyRelease, verifyRefund, explorer } from '../chain.js'
 
@@ -40,7 +40,10 @@ interface Engagement {
  * has been named on), DELIVER (for the work), then rules — releasing promptly, refunding at the
  * deadline the escrow enforces. */
 export function runVerifier(bus: MarketBus, cfg: VerifierConfig): void {
-  const wants = new Map<number, Want & { spec?: AcceptanceSpec }>()
+  // Specs are keyed by their own sha256 — NOT by a forgeable round number. This is what stops a
+  // third party from overwriting the buyer's spec with a weaker one (round-collision griefing): the
+  // spec a verifier rules with is selected by the hash the order provably commits to, below.
+  const specsByHash = new Map<string, AcceptanceSpec>()
   const engagements = new Map<string, Engagement>()
   const program = makeVerifierProgram(cfg.wallet, cfg.rpcUrl)
 
@@ -79,31 +82,38 @@ export function runVerifier(bus: MarketBus, cfg: VerifierConfig): void {
 
     const want = parseWant(text)
     if (want) {
-      // The spec rides the WANT as spec=<b64 json>; kit parsers ignore it, we require it.
+      // The spec rides the WANT as spec=<b64 json>; kit parsers ignore it, we require it. Store it
+      // under its own hash (not the round) so a later WANT can never silently replace it.
       const specB64 = text.match(/spec=(\S+)/)?.[1]
-      wants.set(want.round, { ...want, spec: specB64 ? (JSON.parse(unb64(specB64)) as AcceptanceSpec) : undefined })
+      if (specB64) {
+        try { const spec = JSON.parse(unb64(specB64)) as AcceptanceSpec; specsByHash.set(specHash(spec), spec) }
+        catch { /* a malformed spec is simply not registered — it can never be ruled on */ }
+      }
       return
     }
 
     const dep = parseDeposited(text)
     if (dep) {
-      // Only engage on orders that name THIS verifier and whose reference provably commits to the
-      // spec shown on the market — refuse to rule on anything else.
+      // Only engage on orders that name THIS verifier and whose reference provably commits to a spec
+      // we were actually shown on the market — refuse to rule on anything else.
       const verifier = text.match(/verifier=(\S+)/)?.[1]
       const preimage = text.match(/preimage=(\S+)/)?.[1]
       const seller = text.match(/seller=(\S+)/)?.[1]
       const deadlineTs = Number(text.match(/deadlineAt=(\d+)/)?.[1])
-      const want = wants.get(dep.round)
-      if (verifier !== cfg.wallet.publicKey.toBase58() || !preimage || !seller || !want?.spec) return
+      if (verifier !== cfg.wallet.publicKey.toBase58() || !preimage || !seller) return
       const pre = unb64(preimage)
-      if (referenceOf(pre).toBase58() !== dep.reference || !preimageMatches(pre, dep.round, want.spec)) {
-        bus.post(cfg.name, formatVerdict({ round: dep.round, reference: dep.reference, result: 'REJECTED', reason: b64('order binding does not match the advertised spec') }))
+      // Resolve the spec by the hash the ORDER commits to — pinned by sha256 into the on-chain
+      // reference — so it cannot be swapped for a weaker one. Then re-verify the full binding.
+      const committedHash = pre.match(/:spec=([0-9a-f]{64}):/)?.[1]
+      const spec = committedHash ? specsByHash.get(committedHash) : undefined
+      if (!spec || referenceOf(pre).toBase58() !== dep.reference || !preimageMatches(pre, dep.round, spec)) {
+        bus.post(cfg.name, formatVerdict({ round: dep.round, reference: dep.reference, result: 'REJECTED', reason: b64('order binding does not match a spec advertised on the market') }))
         return
       }
       const e: Engagement = {
         round: dep.round, reference: dep.reference, preimage: pre,
         payer: new PublicKey(dep.buyer), seller: new PublicKey(seller),
-        spec: want.spec, deadlineAt: Number.isFinite(deadlineTs) ? deadlineTs * 1000 : Date.now() + 60_000,
+        spec, deadlineAt: Number.isFinite(deadlineTs) ? deadlineTs * 1000 : Date.now() + 60_000,
       }
       engagements.set(dep.reference, e)
       // No-show timer: if nothing is delivered by the deadline, rule on absence.

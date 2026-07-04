@@ -38,6 +38,35 @@ unilateral control.
 - `reclaim`: escrow refund to the vault, then the **entire** vault balance (deposit + rent + forfeited
   fee) goes to the payer. The dark verifier earns nothing.
 
+## Off-chain pipeline audit (the verifier agent + verdict engine)
+On-chain safety is necessary but not sufficient — a verifier can be attacked *before* it ever signs.
+Second-pass findings and their fixes:
+
+- **[FIXED] Spec-substitution griefing.** The verifier used to resolve the buyer's acceptance spec by
+  **round number** (a forgeable market identifier) from a last-write-wins map, so any third party could
+  post a `WANT` with the same round and a different spec and cause the cryptographic binding to reject
+  the *legitimate* order — a denial-of-service on honest buyers and sellers. Fixed: the spec is now
+  selected by the sha256 the order **provably commits to** (extracted from the reference-pinned
+  preimage), so it cannot be swapped for a weaker one. (`agents/verifier.ts`.)
+- **[FIXED] Verifier DoS.** A hostile seller could feed the verifier an oversized delivery (memory) or a
+  string crafted against a buyer-supplied regex (catastrophic backtracking / ReDoS). Fixed: delivery
+  payloads are capped at 256 KB and regex-checked field values at 8 KB, both failing closed as a
+  verdict rather than hanging the verifier. (`spec.ts`.)
+- **[SOUND] The three-way binding holds.** Before ruling, the verifier requires *all* of:
+  `sha256(preimage) == on-chain reference`, the preimage commits to the exact spec it judged, and the
+  on-chain `has_one` checks match `payer`/`seller`. A forged party on the wire makes the settlement CPI
+  revert (no mis-payment), not succeed.
+- **[RESIDUAL, documented] Deep ReDoS.** The 8 KB cap bounds but does not eliminate catastrophic regex
+  backtracking; a production verifier should run untrusted regexes under a timeout or a linear engine
+  (RE2). Noted honestly rather than hidden.
+
+## What this is (and who it protects) — scope
+This is a **deterministic acceptance-test settlement layer**, not an AI opinion-judge. It enforces the
+checks the buyer *states as data*; it does not invent semantics. That is the point: **anyone who can say
+what "done" means gets trustless settlement** — an indie agent, a solo dev, a small team — not only
+platforms with a legal department and a dispute queue. A verdict is reproducible by any party from public
+data, so the verifier is auditable and *disputable*, never an oracle you must simply trust.
+
 ## Out of scope / accepted
 - A verifier the payer *chose* can still collude to release on bad work — that is a reputation problem,
   not a settlement one, and is exactly what the public on-chain verdict trail is for.

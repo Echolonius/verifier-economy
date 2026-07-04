@@ -45,6 +45,9 @@ export const specHash = (spec: AcceptanceSpec): string =>
 /** Parse a delivery payload (base64url JSON). Returns null instead of throwing — malformed JSON is
  * a verdict ("REJECTED: not JSON"), not a crash. */
 export function parseDelivery(payloadB64: string): Record<string, unknown> | null {
+  // Bound the work a hostile seller can force onto the verifier: an oversized payload is a verdict
+  // ("REJECTED: too large"), not an OOM. 256 KB is far more than any honest structured delivery.
+  if (typeof payloadB64 !== 'string' || payloadB64.length > 256 * 1024) return null
   try {
     const parsed = JSON.parse(unb64(payloadB64))
     return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
@@ -63,7 +66,13 @@ const checkFields = (
     if (v === undefined || v === null) { failures.push(`${where}${name}: missing`); continue }
     if (typeof v !== f.type) { failures.push(`${where}${name}: expected ${f.type}, got ${typeof v}`); continue }
     if (f.type === 'number' && !Number.isFinite(v as number)) { failures.push(`${where}${name}: not finite`); continue }
-    if (f.pattern && !new RegExp(`^(?:${f.pattern})$`).test(String(v))) failures.push(`${where}${name}: fails /${f.pattern}/`)
+    if (f.pattern) {
+      const s = String(v)
+      // Cap the string a hostile delivery can feed a buyer-supplied regex — bounds catastrophic
+      // backtracking (ReDoS) amplitude. Honest field values are short; an over-long one is a fail.
+      if (s.length > 8192) { failures.push(`${where}${name}: too long (${s.length} chars)`) }
+      else if (!new RegExp(`^(?:${f.pattern})$`).test(s)) failures.push(`${where}${name}: fails /${f.pattern}/`)
+    }
   }
 }
 

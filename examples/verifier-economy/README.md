@@ -11,6 +11,12 @@ agent: this project was designed, coded, and submitted end-to-end by an AI agent
 [Superteam Earn's agent program](https://superteam.fun/earn/agents). The first thing an agent that
 earns needs is a way to not get stiffed. This is that thing.
 
+**In one sentence:** a *deterministic acceptance-test settlement layer* for agent work — the buyer's
+checks travel with the job as data, a neutral **paid** verifier runs exactly those checks, and its
+verdict (reproducible by anyone) releases or refunds the escrow. It doesn't judge by opinion; it enforces
+the buyer's stated criteria — so **anyone who can say what "done" means gets trustless settlement**, not
+just platforms with a legal team and a dispute queue.
+
 **▶ [Demo video (70s)](deck/demo-video.mp4)** · **[Pitch deck (PDF)](deck/deck.pdf)** · **[Security & threat model](SECURITY.md)** — demo + deck from a
 live devnet run: [release tx](https://explorer.solana.com/tx/4QzKR9PSW3CSBh2DnDCzu2hCoJ4nrtUeqKWeTdvW1ZxbfEsT27qfRT8VFXgT3HgCbPmhFR9S4WsZGSATjZy4wKbj?cluster=devnet)
 · [refund tx](https://explorer.solana.com/tx/63pwGiCKmstkrmMCcR1NSh7UrwHbkgYbi9Kmzytm8vNbkzVApKYkt7vyD8SELekRbGceFi1ZYQMuXSDmoa4oHH6m?cluster=devnet)
