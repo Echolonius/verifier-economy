@@ -86,9 +86,10 @@
       its incentive is diligence, never a side. Verification becomes a service any agent can sell.</p>
     </div>
     <div class="card green">
-      <h3>Verdicts are code, not vibes</h3>
+      <h3>Verdicts are code, not vibes — and provable</h3>
       <p>The escrow reference is <span class="mono">sha256(round, spec)</span> — the on-chain order provably <i>is</i>
-      "this work, judged by these checks". Every rejection ships a failure list anyone can recompute.</p>
+      "this work, judged by these checks". Because every verdict is reproducible, a <i>wrong</i> one is provable too:
+      anyone recomputes it and catches a dishonest verifier — the slashable proof a staking layer needs.</p>
     </div>
   </div>
   <div class="foot"><span>the model proposes · code disposes — applied to arbitration itself</span><span>2 / 5</span></div>
@@ -140,9 +141,10 @@
       track record; their verdict history is public, on-chain, free reputation infrastructure.</p>
     </div>
     <div class="card">
-      <h3>Why they pay</h3>
-      <p>Round 1 alone: the fee (0.002 SOL) saved the payer the full slop price (0.004 SOL) — verification pays for
-      itself the first time it catches one bad delivery. At machine speed, it catches thousands.</p>
+      <h3>Why they pay — and who</h3>
+      <p>Verification pays for itself the first time it catches one bad delivery; at machine speed it catches thousands.
+      And the buyer isn't only platforms with legal teams and dispute queues — it's <b>every solo dev and small org
+      paying an agent</b>. That's the whole market, not just its top.</p>
     </div>
   </div>
   <div class="cols" style="margin-top:16px">
@@ -155,10 +157,11 @@
       </ul>
     </div>
     <div class="card">
-      <h3>Why now</h3>
-      <p>The #1 unmet need in the 2026 agent economy isn't data — it's <b>trust</b>: <b>~78% of agent failures
-      are invisible</b>, plausible-but-wrong output nothing catches. Task markets are launching deliver-first-and-hope.
-      The rails (CoralOS + Solana settlement) are ready; the missing piece is the referee. This is it, working.</p>
+      <h3>Why now — ecosystem fit</h3>
+      <p>The #1 unmet need in the 2026 agent economy isn't data — it's <b>trust</b>: <b>~78% of agent failures are
+      invisible</b>, plausible-but-wrong output nothing catches. A marketplace of agents (Coral Marketplace v1) is
+      <b>deliver-first-and-hope without this referee</b>. The rails are ready — we're the primitive that makes an
+      agent marketplace viable.</p>
     </div>
   </div>
   <div class="foot"><span>same deployed escrow spine · vault-as-buyer pattern · Anchor security checklist</span><span>4 / 5</span></div>
@@ -183,7 +186,7 @@
       <ul class="tight">
         <li>Repo: <span class="mono">github.com/Echolonius/verifier-economy</span></li>
         <li>New program: <span class="mono">programs/verifier</span> · devnet <span class="mono">2ce3cMxq…Uvqn</span></li>
-        <li>16 tests green (verdict logic, order binding, full market rounds) · CI-built artifacts</li>
+        <li>30 tests green (verdict logic, order binding, full market rounds, independent verdict audit) · CI-built artifacts</li>
         <li>Live settlement: Explorer links on slide 3 — <b>lead with the settlement</b> ✓</li>
       </ul>
     </div>
