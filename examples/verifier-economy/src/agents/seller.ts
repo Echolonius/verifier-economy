@@ -15,7 +15,7 @@ import type { Keypair } from '@solana/web3.js'
 import { complete } from '@pay/agent-runtime'
 import type { MarketBus } from '../bus.js'
 import { formatBid, parseWant, parseAward, parseDeposited, type Want } from '@pay/agent-runtime'
-import { formatDeliver } from '../protocol.js'
+import { formatDeliver, formatDecline, sellerAcceptsVerifier } from '../protocol.js'
 import { b64, unb64 } from '../spec.js'
 import { jobById } from '../data.js'
 
@@ -27,6 +27,10 @@ export interface SellerPersona {
   conduct: SellerConduct
   /** Lowest price this persona will work for, in SOL. */
   floorSol: number
+  /** OPTIONAL mutual-consent allowlist: base58 verifier keys this seller will work under. Undefined
+   * (the demo default) = accept any verifier, so the happy path is unchanged. When set, the seller
+   * refuses an order whose named verifier isn't on the list — the referee must be mutually agreed. */
+  acceptedVerifiers?: string[]
 }
 
 /** Deterministic extraction that actually reads the document — the honest seller's fallback brain,
@@ -111,6 +115,12 @@ export function runSeller(bus: MarketBus, persona: SellerPersona): void {
       pendingAward = null
       const want = wants.get(dep.round)
       if (!want) return
+      // Mutual consent: refuse to work under a verifier this seller didn't agree to (no-op by default).
+      const namedVerifier = text.match(/verifier=(\S+)/)?.[1]
+      if (namedVerifier && !sellerAcceptsVerifier(namedVerifier, persona.acceptedVerifiers)) {
+        bus.post(persona.name, formatDecline(dep.round, dep.reference, persona.name, `verifier ${namedVerifier} not on this seller's accepted list`))
+        return
+      }
       void produce(persona, want.arg).then((payload) => {
         if (payload)
           bus.post(persona.name, formatDeliver({ round: dep.round, reference: dep.reference, by: persona.name, payload }))

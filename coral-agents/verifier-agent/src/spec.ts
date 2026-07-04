@@ -40,7 +40,40 @@ export const b64 = (s: string): string => Buffer.from(s, 'utf8').toString('base6
 export const unb64 = (s: string): string => Buffer.from(s, 'base64url').toString('utf8')
 
 export const specHash = (spec: AcceptanceSpec): string =>
-  createHash('sha256').update(JSON.stringify(spec)).digest('hex')
+  createHash('sha256').update(canonicalize(spec)).digest('hex')
+
+/** Deterministic, key-order-independent JSON for hashing — two specs that are equal as values hash
+ * equally even if their keys were serialized in a different order (the buyer and the verifier build
+ * the object independently). Plain `JSON.stringify` is order-sensitive, which would silently break
+ * the binding check between honest parties. */
+function canonicalize(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalize(v)}`).join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+/** Validate that a spec is actually runnable BEFORE any order binds to it: every field pattern must
+ * compile. Returns the list of problems (empty = usable). The verifier refuses to register a spec
+ * that fails this, so a buyer can't (accidentally or maliciously) post a WANT whose broken regex
+ * would later strand the order and leave an honest seller unpaid. */
+export function validateSpec(spec: AcceptanceSpec): string[] {
+  const problems: string[] = []
+  const checkPatterns = (fields: Record<string, FieldSpec> | undefined, where: string): void => {
+    for (const [name, f] of Object.entries(fields ?? {})) {
+      if (f.pattern === undefined) continue
+      try { new RegExp(`^(?:${f.pattern})$`) }
+      catch { problems.push(`${where}${name}: pattern /${f.pattern}/ is not a valid regex`) }
+    }
+  }
+  checkPatterns(spec.fields, '')
+  checkPatterns(spec.itemFields, 'items[].')
+  return problems
+}
 
 /** Parse a delivery payload (base64url JSON). Returns null instead of throwing — malformed JSON is
  * a verdict ("REJECTED: not JSON"), not a crash. */
@@ -70,8 +103,15 @@ const checkFields = (
       const s = String(v)
       // Cap the string a hostile delivery can feed a buyer-supplied regex — bounds catastrophic
       // backtracking (ReDoS) amplitude. Honest field values are short; an over-long one is a fail.
-      if (s.length > 8192) { failures.push(`${where}${name}: too long (${s.length} chars)`) }
-      else if (!new RegExp(`^(?:${f.pattern})$`).test(s)) failures.push(`${where}${name}: fails /${f.pattern}/`)
+      if (s.length > 8192) { failures.push(`${where}${name}: too long (${s.length} chars)`); continue }
+      // The pattern is buyer-supplied, so it may not even compile (e.g. "("). A broken pattern must be
+      // a verdict ("REJECTED: unusable spec"), NEVER an exception — an exception here would propagate
+      // out of judge() and strand the order (the verifier marks it ruled but never settles), which
+      // punishes an honest seller and is a griefing vector. Compile defensively; treat failure as a fail.
+      let re: RegExp
+      try { re = new RegExp(`^(?:${f.pattern})$`) }
+      catch { failures.push(`${where}${name}: spec pattern /${f.pattern}/ is not a valid regex`); continue }
+      if (!re.test(s)) failures.push(`${where}${name}: fails /${f.pattern}/`)
     }
   }
 }

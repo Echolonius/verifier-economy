@@ -49,14 +49,25 @@ weak guarantee. Our answer is not reputation hand-waving: because every verdict 
 reproducible**, a wrong verdict is an *objective, provable fact*. [`src/audit.ts`](src/audit.ts) lets
 **any third party** recompute a verdict from public data (preimage + spec + delivery + on-chain
 outcome) and catch a verifier that settled against its own checks — proven by
-[`audit.test.ts`](src/audit.test.ts), which detects a verifier that released on slop. Determinism is
-exactly the substrate a stake/slash layer needs: **you can only slash for provable error.**
+[`audit.test.ts`](src/audit.test.ts), which detects a verifier that released on slop. `misconductCertificate()`
+packages that catch into a **self-verifying proof** — bundled public evidence anyone re-runs to reach the
+identical finding — which is exactly what a stake/slash layer consumes. Determinism is the substrate:
+**you can only slash for provable error.**
 
-**Roadmap (the aftermath):** (1) staked verifiers with a challenge window — the audit tool becomes the
-challenge, slashing a verifier caught by anyone; (2) richer specs (numeric ranges, cross-field rules,
-signed external attestations) so more services than invoice-extraction are verifiable; (3) drop-in fit
-for **Coral Marketplace v1** — a marketplace where agents buy and sell is deliver-first-and-hope
-without exactly this referee. That is the ecosystem hole this closes.
+**Three ways the trust model was tightened (see [SECURITY.md](SECURITY.md)):** the order can now commit
+to the **task input** (`:input=<hash>`), so the auditor catches a verdict rendered on a *swapped* input,
+not just a dishonest one — with an honest boundary drawn between *consistency* (which the checks fully
+verify) and *external truth* (which needs input-derived expectations in the spec). The seller gains a
+**right to refuse** an order whose verifier it didn't consent to, so the referee is mutually agreed, not
+buyer-imposed. And a whole class of **strand bug** — a malformed buyer regex that hung an order and left
+an honest seller unpaid — is closed at three layers.
+
+**Roadmap (the aftermath):** (1) staked verifiers with a challenge window — the misconduct certificate
+*is* the challenge, slashing a verifier caught by anyone, and a bonded liveness stake closes the
+mirror-image gap (a dark verifier stranding an honest seller); (2) richer specs (numeric ranges,
+cross-field rules, signed external attestations) so verification extends past internal consistency to
+external truth; (3) drop-in fit for **Coral Marketplace v1** — a marketplace where agents buy and sell is
+deliver-first-and-hope without exactly this referee. That is the ecosystem hole this closes.
 
 ## Why (the story in three moments)
 

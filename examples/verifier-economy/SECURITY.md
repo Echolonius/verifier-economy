@@ -56,9 +56,52 @@ Second-pass findings and their fixes:
   `sha256(preimage) == on-chain reference`, the preimage commits to the exact spec it judged, and the
   on-chain `has_one` checks match `payer`/`seller`. A forged party on the wire makes the settlement CPI
   revert (no mis-payment), not succeed.
+- **[FIXED] Malformed-spec strand (the worst of the three — it silently robbed an honest seller).** A
+  buyer's acceptance spec carries regex patterns, and those patterns are attacker-controlled data. A
+  pattern that is a valid string but an *invalid regex* (e.g. `"("`) made `new RegExp()` **throw** inside
+  `judge()`. Because the verifier marks an order `ruled` *before* it judges, that exception left the
+  order marked-ruled-but-never-settled — it hung until the payer `reclaim`ed, so **an honest seller who
+  delivered good work was left unpaid** (and a buyer could trigger it deliberately for free work).
+  Fixed in depth: (1) `validateSpec()` rejects any spec with an uncompilable pattern at registration, so
+  no order can bind to one; (2) `judge()` compiles patterns defensively — a bad pattern is a REJECTED
+  *failure*, never a throw; (3) the agent wraps `judge()` so any unexpected throw routes to a refund, not
+  an escaped exception. A regression test asserts `judge()` does not throw on `"("`. (`spec.ts`,
+  `agents/verifier.ts`.)
+- **[FIXED] Serialization-dependent spec hash.** `specHash` used raw `JSON.stringify`, whose output is
+  key-order-dependent. The buyer and the verifier build the spec object independently, so a different key
+  order would produce different hashes and make the binding check reject a *legitimate* order. Fixed with
+  a canonical (sorted-key) serialization, so the hash commits to the spec **value**, not an incidental
+  serialization. (`spec.ts`.)
 - **[RESIDUAL, documented] Deep ReDoS.** The 8 KB cap bounds but does not eliminate catastrophic regex
   backtracking; a production verifier should run untrusted regexes under a timeout or a linear engine
   (RE2). Noted honestly rather than hidden.
+
+## Input provenance — *which* task was judged (semantic hardening)
+A subtler root than "did the verifier rule honestly" is "did it rule on the **right input**." The order
+preimage commits to the round and the spec; it now *also optionally* commits to a hash of the task input
+(`:input=<sha256>` — see `bindOrder(round, spec, nonce, inputHash)` and `hashInput()`), strictly
+additively (omit it and the preimage is byte-identical to the legacy format, so recorded devnet orders
+stay valid). When present, an auditor with the claimed input recomputes its hash and catches a verdict
+rendered against a *swapped, easier* input — proven by a test. **Honest boundary:** the deterministic
+checks verify a delivery's *internal consistency and schema* (items sum to total, date parses, fields
+present), which is complete where "done" *is* "satisfies these checks" — test suites, schema/constraint
+conformance. Where "done" needs external ground truth (is this the *correct* total for this invoice?), the
+buyer must encode input-derived expectations into the spec (an expected value it already knows, or a
+signed external attestation); absent that, the verifier proves consistency, not truth, and this document
+says so rather than overclaiming.
+
+## Mutual consent on the referee, and liveness fairness (incentive hardening)
+- **Mutual verifier consent.** The buyer names the verifier unilaterally, so a buyer could name one it
+  secretly controls. The seller's defence is now a first-class right to **refuse** an order whose named
+  verifier is not on its accepted list (`sellerAcceptsVerifier()`; the seller emits a `DECLINE` instead
+  of working). It is opt-in — a seller with no allowlist accepts any verifier, so the demo's happy path
+  is unchanged — but it makes the referee a *mutually agreed* party, not a buyer-imposed one.
+- **Liveness fairness (accepted limit).** If the verifier goes dark, `reclaim` returns everything to the
+  *payer* after the grace window — which is correct for the payer but means a seller that delivered good
+  work is not paid when the referee stalls. This is an accepted limitation of the no-stake design; the
+  seller's protection today is choosing verifiers with a public liveness record (the verdict trail), and
+  the roadmap fix is a **bonded verifier** whose stake is slashed for non-response, closing the gap
+  symmetrically with the misconduct case below.
 
 ## What this is (and who it protects) — scope
 This is a **deterministic acceptance-test settlement layer**, not an AI opinion-judge. It enforces the
@@ -73,10 +116,14 @@ designs (RAILS, ERC-8004) answer this with **staking + slashing**. This project 
 those require: because verdicts are **deterministic and reproducible**, verifier misconduct is
 *objectively provable*, not a matter of opinion. [`src/audit.ts`](src/audit.ts) lets any third party
 recompute a verdict from public data (preimage + spec + delivery + settlement outcome) and prove a
-verifier settled against its own checks — the test suite includes a caught-in-the-act case. A
-stake/challenge/slash layer is the natural next step and slots directly on top: **you can only slash for
-provable error, and determinism is what makes error provable.** Until then, the guarantee is: a
-dishonest verifier cannot hide — every ruling is publicly recomputable and disputable.
+verifier settled against its own checks — the test suite includes a caught-in-the-act case. To make that
+proof *portable*, `misconductCertificate()` emits a self-verifying artifact: it bundles only public
+evidence, and anyone (a challenge window, a slashing contract, a skeptic) re-runs the audit on it and
+**must** reproduce the same finding — no trust in whoever reported it. That certificate is exactly the
+input a staked-verifier slasher consumes. A stake/challenge/slash layer is the natural next step and slots
+directly on top: **you can only slash for provable error, and determinism is what makes error provable.**
+Until then, the guarantee is: a dishonest verifier cannot hide — every ruling is publicly recomputable,
+and its misconduct is packaged into a proof anyone can check.
 
 ## Out of scope / accepted
 - Devnet only. No mainnet keypair is ever committed; `.env` is gitignored.

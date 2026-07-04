@@ -11,7 +11,7 @@
 import { PublicKey } from '@solana/web3.js'
 import { startCoralAgent, parseWant, parseDeposited, loadKeypairB58 } from '@pay/agent-runtime'
 import { parseDeliver, formatVerdict } from './protocol.js'
-import { judge, b64, unb64, specHash, type AcceptanceSpec } from './spec.js'
+import { judge, b64, unb64, specHash, validateSpec, type AcceptanceSpec } from './spec.js'
 import { referenceOf, preimageMatches } from './reference.js'
 import { makeVerifierProgram, verifyRelease, verifyRefund } from './chain.js'
 
@@ -44,7 +44,11 @@ await startCoralAgent({ agentName: NAME }, async (ctx) => {
     e.ruled = true
     const reference = new PublicKey(e.reference)
     if (e.delivered) {
-      const verdict = judge(e.delivered, e.spec)
+      // Belt-and-brace: judge() never throws, but an unexpected throw must become a refund, never an
+      // escaped exception that leaves the order ruled-but-unsettled (honest seller stranded).
+      let verdict
+      try { verdict = judge(e.delivered, e.spec) }
+      catch (err) { verdict = { pass: false, failures: [`verifier error: ${String(err)}`] } }
       if (verdict.pass) {
         const sig = await verifyRelease(program, wallet, e.seller, e.payer, reference)
         await post(e.threadId, formatVerdict({ round: e.round, reference: e.reference, result: 'VERIFIED', sig }))
@@ -70,7 +74,14 @@ await startCoralAgent({ agentName: NAME }, async (ctx) => {
       const want = parseWant(text)
       if (want) {
         const specB64 = text.match(/spec=(\S+)/)?.[1]
-        if (specB64) { try { const s = JSON.parse(unb64(specB64)) as AcceptanceSpec; specsByHash.set(specHash(s), s) } catch { /* ignore malformed */ } }
+        if (specB64) {
+          try {
+            const s = JSON.parse(unb64(specB64)) as AcceptanceSpec
+            // Refuse an unusable spec (e.g. an uncompilable regex) so no order can bind to it and
+            // later strand — same guard as the in-process referee.
+            if (validateSpec(s).length === 0) specsByHash.set(specHash(s), s)
+          } catch { /* ignore malformed */ }
+        }
         continue
       }
 

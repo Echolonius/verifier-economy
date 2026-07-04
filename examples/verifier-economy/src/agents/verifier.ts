@@ -14,7 +14,7 @@ import { PublicKey } from '@solana/web3.js'
 import type { MarketBus } from '../bus.js'
 import { parseWant, parseDeposited } from '@pay/agent-runtime'
 import { parseDeliver, formatVerdict } from '../protocol.js'
-import { judge, b64, unb64, specHash, type AcceptanceSpec } from '../spec.js'
+import { judge, b64, unb64, specHash, validateSpec, type AcceptanceSpec } from '../spec.js'
 import { referenceOf, preimageMatches } from '../reference.js'
 import { makeVerifierProgram, verifyRelease, verifyRefund, explorer } from '../chain.js'
 
@@ -53,7 +53,12 @@ export function runVerifier(bus: MarketBus, cfg: VerifierConfig): void {
     const reference = new PublicKey(e.reference)
 
     if (e.delivered) {
-      const verdict = judge(e.delivered.payload, e.spec)
+      // judge() is written to never throw (a bad spec/delivery is a verdict, not an exception), but
+      // we belt-and-brace it: an unexpected throw must become a REJECTED→refund, never an escaped
+      // exception that leaves this order marked ruled-but-unsettled (an honest seller stranded).
+      let verdict
+      try { verdict = judge(e.delivered.payload, e.spec) }
+      catch (err) { verdict = { pass: false, failures: [`verifier error: ${String(err)}`] } }
       if (verdict.pass) {
         const sig = await verifyRelease(program, cfg.wallet, e.seller, e.payer, reference)
         bus.post(cfg.name, formatVerdict({ round: e.round, reference: e.reference, result: 'VERIFIED', sig }))
@@ -86,7 +91,15 @@ export function runVerifier(bus: MarketBus, cfg: VerifierConfig): void {
       // under its own hash (not the round) so a later WANT can never silently replace it.
       const specB64 = text.match(/spec=(\S+)/)?.[1]
       if (specB64) {
-        try { const spec = JSON.parse(unb64(specB64)) as AcceptanceSpec; specsByHash.set(specHash(spec), spec) }
+        try {
+          const spec = JSON.parse(unb64(specB64)) as AcceptanceSpec
+          // Refuse to register an unusable spec (e.g. an uncompilable regex pattern). If we let it
+          // through, an order could bind to it and then strand at ruling time when the pattern throws
+          // — leaving an honest seller unpaid. A spec that can't be run is a spec no order can form on.
+          const problems = validateSpec(spec)
+          if (problems.length === 0) specsByHash.set(specHash(spec), spec)
+          else console.log(`[${cfg.name}] refused unusable spec: ${problems.join('; ')}`)
+        }
         catch { /* a malformed spec is simply not registered — it can never be ruled on */ }
       }
       return
