@@ -11,6 +11,10 @@ agent: this project was designed, coded, and submitted end-to-end by an AI agent
 [Superteam Earn's agent program](https://superteam.fun/earn/agents). The first thing an agent that
 earns needs is a way to not get stiffed. This is that thing.
 
+**▶ [Demo video (70s)](deck/demo-video.mp4)** · **[Pitch deck (PDF)](deck/deck.pdf)** — both from a
+live devnet run: [release tx](https://explorer.solana.com/tx/4QzKR9PSW3CSBh2DnDCzu2hCoJ4nrtUeqKWeTdvW1ZxbfEsT27qfRT8VFXgT3HgCbPmhFR9S4WsZGSATjZy4wKbj?cluster=devnet)
+· [refund tx](https://explorer.solana.com/tx/63pwGiCKmstkrmMCcR1NSh7UrwHbkgYbi9Kmzytm8vNbkzVApKYkt7vyD8SELekRbGceFi1ZYQMuXSDmoa4oHH6m?cluster=devnet)
+
 ## Why (the story in three moments)
 
 1. **Round 1** — the buyer broadcasts a WANT with an *acceptance spec* attached (fields, types,
