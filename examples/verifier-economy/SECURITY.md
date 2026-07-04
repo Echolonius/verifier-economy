@@ -90,12 +90,16 @@ buyer must encode input-derived expectations into the spec (an expected value it
 signed external attestation); absent that, the verifier proves consistency, not truth, and this document
 says so rather than overclaiming.
 
-## Mutual consent on the referee, and liveness fairness (incentive hardening)
-- **Mutual verifier consent.** The buyer names the verifier unilaterally, so a buyer could name one it
-  secretly controls. The seller's defence is now a first-class right to **refuse** an order whose named
-  verifier is not on its accepted list (`sellerAcceptsVerifier()`; the seller emits a `DECLINE` instead
-  of working). It is opt-in — a seller with no allowlist accepts any verifier, so the demo's happy path
-  is unchanged — but it makes the referee a *mutually agreed* party, not a buyer-imposed one.
+## Verifier refusal (the seller's veto) and liveness fairness (incentive hardening)
+- **Verifier refusal.** The buyer names the verifier unilaterally, so a buyer could name one it secretly
+  controls. The seller's defence is now a first-class right to **refuse** an order whose named verifier is
+  not on its accepted list (`sellerAcceptsVerifier()`; the seller emits a `DECLINE` instead of working).
+  It is opt-in — a seller with no allowlist accepts any verifier, so the demo's happy path is unchanged.
+  **Honest scope:** the verifier is currently surfaced only at `DEPOSITED`, which the buyer posts *after*
+  the on-chain `open` has funded the escrow — so this is a *refuse-to-be-judged veto* (decline → the order
+  refunds at the deadline), **not** pre-funding mutual agreement. Carrying `verifier=` in the `WANT` so
+  sellers can weigh (or refuse) the referee at **bid** time — turning the veto into true mutual consent —
+  is the next step.
 - **Liveness fairness (accepted limit).** If the verifier goes dark, `reclaim` returns everything to the
   *payer* after the grace window — which is correct for the payer but means a seller that delivered good
   work is not paid when the referee stalls. This is an accepted limitation of the no-stake design; the

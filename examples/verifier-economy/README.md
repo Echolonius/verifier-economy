@@ -58,9 +58,11 @@ identical finding — which is exactly what a stake/slash layer consumes. Determ
 to the **task input** (`:input=<hash>`), so the auditor catches a verdict rendered on a *swapped* input,
 not just a dishonest one — with an honest boundary drawn between *consistency* (which the checks fully
 verify) and *external truth* (which needs input-derived expectations in the spec). The seller gains a
-**right to refuse** an order whose verifier it didn't consent to, so the referee is mutually agreed, not
-buyer-imposed. And a whole class of **strand bug** — a malformed buyer regex that hung an order and left
-an honest seller unpaid — is closed at three layers.
+**veto on the referee**: it can refuse to be judged by a verifier it doesn't accept (it declines and the
+order refunds at the deadline). Today the verifier is surfaced at deposit time, *after* funding, so this
+is a refuse-to-be-judged veto rather than pre-funding agreement — carrying the verifier in the `WANT` so
+sellers price it in at bid time is the next step. And a whole class of **strand bug** — a malformed buyer
+regex that hung an order and left an honest seller unpaid — is closed at three layers.
 
 **Roadmap (the aftermath):** (1) staked verifiers with a challenge window — the misconduct certificate
 *is* the challenge, slashing a verifier caught by anyone, and a bonded liveness stake closes the
