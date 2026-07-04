@@ -67,7 +67,18 @@ what "done" means gets trustless settlement** — an indie agent, a solo dev, a 
 platforms with a legal department and a dispute queue. A verdict is reproducible by any party from public
 data, so the verifier is auditable and *disputable*, never an oracle you must simply trust.
 
+## Who verifies the verifier? (the deepest weakpoint, addressed honestly)
+A verifier the payer *chose* can still collude with the seller to release on bad work. Sophisticated
+designs (RAILS, ERC-8004) answer this with **staking + slashing**. This project provides the primitive
+those require: because verdicts are **deterministic and reproducible**, verifier misconduct is
+*objectively provable*, not a matter of opinion. [`src/audit.ts`](src/audit.ts) lets any third party
+recompute a verdict from public data (preimage + spec + delivery + settlement outcome) and prove a
+verifier settled against its own checks — the test suite includes a caught-in-the-act case. A
+stake/challenge/slash layer is the natural next step and slots directly on top: **you can only slash for
+provable error, and determinism is what makes error provable.** Until then, the guarantee is: a
+dishonest verifier cannot hide — every ruling is publicly recomputable and disputable.
+
 ## Out of scope / accepted
-- A verifier the payer *chose* can still collude to release on bad work — that is a reputation problem,
-  not a settlement one, and is exactly what the public on-chain verdict trail is for.
 - Devnet only. No mainnet keypair is ever committed; `.env` is gitignored.
+- Staking/slashing enforcement is roadmap, not shipped — the shipped guarantee is *provable* misconduct
+  (via `audit.ts`), not yet *economically punished* misconduct.

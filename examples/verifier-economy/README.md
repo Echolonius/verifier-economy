@@ -21,6 +21,27 @@ just platforms with a legal team and a dispute queue.
 live devnet run: [release tx](https://explorer.solana.com/tx/4QzKR9PSW3CSBh2DnDCzu2hCoJ4nrtUeqKWeTdvW1ZxbfEsT27qfRT8VFXgT3HgCbPmhFR9S4WsZGSATjZy4wKbj?cluster=devnet)
 · [refund tx](https://explorer.solana.com/tx/63pwGiCKmstkrmMCcR1NSh7UrwHbkgYbi9Kmzytm8vNbkzVApKYkt7vyD8SELekRbGceFi1ZYQMuXSDmoa4oHH6m?cluster=devnet)
 
+## Where this sits — accountability, landscape, and what's next
+
+The agent economy's verification problem is real and recognised (Arbitrum Foundation, *"The agent
+economy has a verification problem"*), and it is being worked on — **RAILS** (verification-native
+clearing with staking + slashing), **ERC-8004** (decentralised agent escrow settlement), **MEMO**. We
+are not claiming to have invented the category; we are contributing the primitive the rest build on.
+
+**"Who verifies the verifier?"** — the honest hard question. A paid verifier you merely *trust* is a
+weak guarantee. Our answer is not reputation hand-waving: because every verdict is **deterministic and
+reproducible**, a wrong verdict is an *objective, provable fact*. [`src/audit.ts`](src/audit.ts) lets
+**any third party** recompute a verdict from public data (preimage + spec + delivery + on-chain
+outcome) and catch a verifier that settled against its own checks — proven by
+[`audit.test.ts`](src/audit.test.ts), which detects a verifier that released on slop. Determinism is
+exactly the substrate a stake/slash layer needs: **you can only slash for provable error.**
+
+**Roadmap (the aftermath):** (1) staked verifiers with a challenge window — the audit tool becomes the
+challenge, slashing a verifier caught by anyone; (2) richer specs (numeric ranges, cross-field rules,
+signed external attestations) so more services than invoice-extraction are verifiable; (3) drop-in fit
+for **Coral Marketplace v1** — a marketplace where agents buy and sell is deliver-first-and-hope
+without exactly this referee. That is the ecosystem hole this closes.
+
 ## Why (the story in three moments)
 
 1. **Round 1** — the buyer broadcasts a WANT with an *acceptance spec* attached (fields, types,
