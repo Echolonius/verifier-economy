@@ -1,0 +1,28 @@
+# Agent manifest — coral-server reads this to discover, launch, and configure the verifier agent.
+# Docs: https://docs.coralos.ai/reference/agent
+edition = 4
+
+[agent]
+name = "verifier-agent"
+version = "0.1.0"
+description = "Neutral PAID verifier for the agent market. Named per order, it re-derives the order binding, runs the buyer's acceptance spec against the delivery, and settles the escrow (release on pass, refund on fail). Paid on either verdict; diligence, not bias, is the business."
+summary = "The referee agent — runs the buyer's checks and settles the escrow on its verdict."
+readme = "Joins the market thread. On a DEPOSITED that names this verifier, it verifies the order binding (reference = sha256 of round+spec), judges the delivery deterministically, and signs verify_release / verify_refund on the deployed verifier program. Every verdict is reproducible from public data."
+
+[agent.license]
+type = "spdx"
+expression = "MIT"
+
+[options]
+AGENT_NAME = { type = "string", default = "verifier-agent", description = "Market identity for this verifier" }
+VERIFIER_KEYPAIR_B58 = { type = "string", description = "Base58 secret key of the verifier wallet that signs settlements (devnet)" }
+SOLANA_RPC_URL = { type = "string", default = "https://api.devnet.solana.com", description = "Solana RPC URL" }
+
+# Run as a container (coral-server in Docker launches it via the Docker socket).
+[runtimes.docker]
+image = "verifier-agent:0.1.0"
+
+# Run directly (used when coral-server runs on the host).
+[runtimes.executable]
+path = "node"
+arguments = ["dist/index.js"]

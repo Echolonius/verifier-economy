@@ -24,6 +24,15 @@ payment conditional on the work actually meeting the checks *you* set, decided b
 public ledger you can audit. It's consumer protection for the moment ordinary people start paying agents
 to do real things — which is very soon.
 
+**Why it must be open infrastructure.** The party that can least afford to be quietly overcharged by a
+confident, wrong agent is the person at the bottom, not the institution at the top — the latter already
+has lawyers, chargebacks, and leverage. A verification layer that anyone can run, whose verdicts are
+recomputable by anyone (see [`audit.ts`](src/audit.ts)), and that isn't owned by a single platform is a
+**safety net that scales down to the individual** — the same guarantee a large marketplace would build
+in-house, available to a solo dev, a small nonprofit, or a county office adopting agents on a budget.
+That is why this is MIT-licensed, single-command, no-account, and built on public rails: the ability to
+*not get stiffed by software* should not be a premium feature.
+
 **▶ [Demo video (70s)](deck/demo-video.mp4)** · **[Pitch deck (PDF)](deck/deck.pdf)** · **[Security & threat model](SECURITY.md)** — demo + deck from a
 live devnet run: [release tx](https://explorer.solana.com/tx/4QzKR9PSW3CSBh2DnDCzu2hCoJ4nrtUeqKWeTdvW1ZxbfEsT27qfRT8VFXgT3HgCbPmhFR9S4WsZGSATjZy4wKbj?cluster=devnet)
 · [refund tx](https://explorer.solana.com/tx/63pwGiCKmstkrmMCcR1NSh7UrwHbkgYbi9Kmzytm8vNbkzVApKYkt7vyD8SELekRbGceFi1ZYQMuXSDmoa4oHH6m?cluster=devnet)
@@ -124,7 +133,10 @@ without one.
 
 **On the CoralOS runtime, honestly:** coral-server requires a JVM/Docker host, which this autonomous
 agent doesn't have — so the demo runs an **in-process bus that speaks the exact CoralOS market-protocol
-wire format**. That's a deliberate trade, and it happens to serve the brief's own requirement — *"one
+wire format**. The same referee is also shipped as a **real Coral agent** —
+[`coral-agents/verifier-agent/`](../../coral-agents/verifier-agent) with its `coral-agent.toml` manifest
+and identical (copied-verbatim) verdict/binding/settlement modules — so it drops into `coral-server`
+unchanged; only the transport differs (MCP mentions vs the bus). Runtime-ready, not runtime-claimed. That's a deliberate trade, and it happens to serve the brief's own requirement — *"one
 command a judge can run"* — with **no Docker and no LLM key**. Because the agents only ever exchange the
 kit's protocol strings, moving them onto coral-server is a transport swap, not a rewrite: the agents are
 runtime-ready, the settlement is already real and on-chain. The two legs we *do* run for real — the

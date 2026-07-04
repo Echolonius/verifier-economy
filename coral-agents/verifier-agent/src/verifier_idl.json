@@ -1,0 +1,616 @@
+{
+  "address": "2ce3cMxqi423wQjC5NXNMBExa1PpybtCnLUs8uFtUvqn",
+  "metadata": {
+    "name": "verifier",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Verifier - per-order paid arbitration over the escrow: any agent can be the neutral verifier, chosen at open, paid on either verdict"
+  },
+  "instructions": [
+    {
+      "name": "open",
+      "docs": [
+        "Open a verified order: fund the vault (deposit + escrow rent + verifier fee), record the",
+        "per-order verifier, and deposit into the escrow with the vault as the escrow's `buyer`.",
+        "`deadline` is the escrow's refund deadline (unix ts); `grace_secs` extends it to",
+        "`reclaim_after`, after which the payer may force a reclaim if the verifier never ruled."
+      ],
+      "discriminator": [
+        228,
+        220,
+        155,
+        71,
+        199,
+        189,
+        60,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller"
+        },
+        {
+          "name": "verifier"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "escrow_program"
+            }
+          }
+        },
+        {
+          "name": "escrow_program",
+          "address": "R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "fee",
+          "type": "u64"
+        },
+        {
+          "name": "reference",
+          "type": "pubkey"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        },
+        {
+          "name": "grace_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "reclaim",
+      "docs": [
+        "Liveness backstop: if the verifier never rules, the payer may sweep everything back - deposit,",
+        "rent, **and** the fee (the verifier forfeits it) - at/after `reclaim_after`."
+      ],
+      "discriminator": [
+        44,
+        177,
+        236,
+        249,
+        145,
+        109,
+        163,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "escrow_program"
+            }
+          }
+        },
+        {
+          "name": "escrow_program",
+          "address": "R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "reference",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "verify_refund",
+      "docs": [
+        "After the escrow deadline, the named verifier attests failure (rejected or undelivered) ->",
+        "the payer is refunded; the verifier is still paid its fee (neutral either way)."
+      ],
+      "discriminator": [
+        102,
+        122,
+        183,
+        197,
+        182,
+        60,
+        23,
+        140
+      ],
+      "accounts": [
+        {
+          "name": "verifier",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "escrow_program"
+            }
+          }
+        },
+        {
+          "name": "escrow_program",
+          "address": "R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "reference",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "verify_release",
+      "docs": [
+        "The named verifier attests the delivery passed its acceptance checks -> the escrow pays the",
+        "seller, the verifier collects its fee, and any remainder (escrow rent) returns to the payer."
+      ],
+      "discriminator": [
+        180,
+        188,
+        14,
+        4,
+        101,
+        14,
+        35,
+        236
+      ],
+      "accounts": [
+        {
+          "name": "verifier",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "reference"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "escrow_program"
+            }
+          }
+        },
+        {
+          "name": "escrow_program",
+          "address": "R5NWNg9eRLWWQU81Xbzz5Du1k7jTDeeT92Ty6qCeXet"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "reference",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Order",
+      "discriminator": [
+        134,
+        173,
+        223,
+        185,
+        77,
+        86,
+        28,
+        51
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6001,
+      "name": "NegativeGrace",
+      "msg": "Grace must not be negative"
+    },
+    {
+      "code": 6002,
+      "name": "VerifierIsParty",
+      "msg": "The verifier must be a third party - not the payer or the seller"
+    },
+    {
+      "code": 6003,
+      "name": "NotVerifier",
+      "msg": "Caller is not this order's verifier"
+    },
+    {
+      "code": 6004,
+      "name": "WrongSeller",
+      "msg": "Seller does not match the order"
+    },
+    {
+      "code": 6005,
+      "name": "WrongPayer",
+      "msg": "Payer does not match the order"
+    },
+    {
+      "code": 6006,
+      "name": "BeforeReclaim",
+      "msg": "Reclaim is only allowed at or after reclaim_after"
+    },
+    {
+      "code": 6007,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Order",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "verifier",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "reclaim_after",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
