@@ -106,6 +106,15 @@ says so rather than overclaiming.
   seller's protection today is choosing verifiers with a public liveness record (the verdict trail), and
   the roadmap fix is a **bonded verifier** whose stake is slashed for non-response, closing the gap
   symmetrically with the misconduct case below.
+- **Roadmap (identified in post-submission review, 2026-07-05): commit-reveal delivery.** Today the
+  delivery payload travels in the clear, so the dark-referee case is doubly unfair: the buyer reclaims
+  the funds *and* has already read the work. The classic fair-exchange fix slots in at the protocol
+  layer with **no contract change**: the seller publishes only the *ciphertext* of the delivery (its
+  hash on the wire as now), the verifier — who must see plaintext to judge — receives the key privately,
+  and the key is disclosed to the buyer only alongside a `verify_release`. A choked referee then costs
+  the seller time, never the work product; a referee that leaks the key pre-verdict is ordinary provable
+  misconduct (bond-slashable, above). Symmetric-key encryption suffices here and is not weakened by
+  quantum adversaries, so the scheme stays sound post-quantum.
 
 ## What this is (and who it protects) — scope
 This is a **deterministic acceptance-test settlement layer**, not an AI opinion-judge. It enforces the
