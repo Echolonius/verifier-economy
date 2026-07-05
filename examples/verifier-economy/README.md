@@ -33,7 +33,7 @@ in-house, available to a solo dev, a small nonprofit, or a county office adoptin
 That is why this is MIT-licensed, single-command, no-account, and built on public rails: the ability to
 *not get stiffed by software* should not be a premium feature.
 
-**▶ [Demo video (70s)](deck/demo-video.mp4)** · **[Pitch deck (PDF)](deck/deck.pdf)** · **[Security & threat model](SECURITY.md)** — demo + deck from a
+**▶ [Demo video (87s)](deck/demo-video.mp4)** · **[Pitch deck (PDF)](deck/deck.pdf)** · **[Security & threat model](SECURITY.md)** — demo + deck from a
 live devnet run: [release tx](https://explorer.solana.com/tx/4QzKR9PSW3CSBh2DnDCzu2hCoJ4nrtUeqKWeTdvW1ZxbfEsT27qfRT8VFXgT3HgCbPmhFR9S4WsZGSATjZy4wKbj?cluster=devnet)
 · [refund tx](https://explorer.solana.com/tx/63pwGiCKmstkrmMCcR1NSh7UrwHbkgYbi9Kmzytm8vNbkzVApKYkt7vyD8SELekRbGceFi1ZYQMuXSDmoa4oHH6m?cluster=devnet)
 
@@ -43,6 +43,10 @@ The agent economy's verification problem is real and recognised (Arbitrum Founda
 economy has a verification problem"*), and it is being worked on — **RAILS** (verification-native
 clearing with staking + slashing), **ERC-8004** (decentralised agent escrow settlement), **MEMO**. We
 are not claiming to have invented the category; we are contributing the primitive the rest build on.
+Even **Virtuals ACP** — today's largest live agent marketplace — ships a native Evaluation phase with
+paid evaluator agents, which proves the demand for referees; but its evaluators render *subjective LLM
+judgments* that nobody can audit. Ours are deterministic and reproducible — an evaluator like that
+could be caught cheating by our `audit.ts`; nothing in that design can catch theirs.
 
 **"Who verifies the verifier?"** — the honest hard question. A paid verifier you merely *trust* is a
 weak guarantee. Our answer is not reputation hand-waving: because every verdict is **deterministic and
